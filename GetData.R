@@ -1,6 +1,7 @@
 library(tuber)
 library(syuzhet)
 library(dplyr)
+library(tibble)
 
 #OAuth and Connection
 app_id <- "830360114408-ev1q4bqv76daq7o0i4b2dj48dehomt36.apps.googleusercontent.com"
@@ -60,3 +61,24 @@ get_videos <- function(channelID){
 
 #Get Crowder videos
 crowderVideos <- get_videos(crowderID)
+
+# Get statistics of the videos and make data frame
+
+get_video_stats <- function(videos) {
+  
+  videostats = lapply(as.character(videos$video_id), function(x){
+    get_stats(video_id = x)
+  })
+  
+  videostats = do.call(rbind.data.frame, videostats)
+  videostats$title = videos$title
+  videostats$date = videos$date
+  videostats = select(videostats, date, id, title, viewCount, likeCount, dislikeCount, commentCount) %>%
+    as.tibble() %>%
+    mutate(viewCount = as.numeric(as.character(viewCount)),
+           likeCount = as.numeric(as.character(likeCount)),
+           dislikeCount = as.numeric(as.character(dislikeCount)),
+           commentCount = as.numeric(as.character(commentCount)))
+}
+
+crowderVideoStats <- get_video_stats(crowderVideos)
