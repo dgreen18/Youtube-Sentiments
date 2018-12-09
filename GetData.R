@@ -1,5 +1,6 @@
 library(tuber)
 library(syuzhet)
+library(dplyr)
 
 #OAuth and Connection
 app_id <- "830360114408-ev1q4bqv76daq7o0i4b2dj48dehomt36.apps.googleusercontent.com"
@@ -46,3 +47,16 @@ crowderStats <- get_channel_stats(crowderID)
 shapiroStats <- get_channel_stats(shapiroID)
 contraStats <- get_channel_stats(contraID)
 shaunStats <- get_channel_stats(shaunID)
+
+#Get all videos of a channel from the last 3 months
+get_videos <- function(channelID){
+  videos = yt_search(term="", type="video", channel_id = channelID)
+  videos = videos %>%
+    mutate(date = as.Date(publishedAt)) %>%
+    filter(date > "2018-10-01") %>%
+    arrange(date)
+  return(videos)
+}
+
+#Get Crowder videos
+crowderVideos <- get_videos(crowderID)
