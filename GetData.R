@@ -2,34 +2,13 @@ library(tuber)
 library(syuzhet)
 library(dplyr)
 library(tibble)
+library(stringi)
+library(ggplot2)
 
 #OAuth and Connection
 app_id <- "830360114408-ev1q4bqv76daq7o0i4b2dj48dehomt36.apps.googleusercontent.com"
 app_secret <- "OjLU0iwI5yJjk9axkpwHUjgC"
 yt_oauth(app_id, app_secret)
-
-#Get Video Stats
-climateNoah <- "YRGgbcU7FmI"
-climNo <- get_stats(video_id=climateNoah)
-# https://www.youtube.com/watch?v=YRGgbcU7FmI
-# Trump Contradicts His Own Administration’s Climate Change Report | The Daily Show
-
-#Get Comments
-res <- get_all_comments(c(video_id=climateNoah))
-str(res)
-comments <- iconv(res$textOriginal, to = 'UTF-8')
-class(comments)
-
-# Get sentiment scores
-score <- get_nrc_sentiment(comments)
-score$neutral <- ifelse(score$negative+score$positive == 0, 1, 0) #neutral score
-score
-
-#Bar Plot
-barplot(100*colSums(score)/sum(score),
-        las = 2,
-        col = rainbow(10),
-        ylab = 'Percentage',main = 'Sentiment Scores for Youtube Comments')
 
 # Channels Picked
 # Two incredibly popular right leaning youtubers:
@@ -44,11 +23,6 @@ shapiroID <- "UCnQC_G5Xsjhp9fEJKuIcrSw"
 contraID <- "UCNvsIonJdJ5E4EXMa65VYpA"
 shaunID <- "UCJ6o36XL0CpYb6U5dNBiXHQ"
 
-crowderStats <- get_channel_stats(crowderID)
-shapiroStats <- get_channel_stats(shapiroID)
-contraStats <- get_channel_stats(contraID)
-shaunStats <- get_channel_stats(shaunID)
-
 #Get all videos of a channel from the last 3 months
 get_videos <- function(channelID){
   videos = yt_search(term="", type="video", channel_id = channelID)
@@ -58,9 +32,6 @@ get_videos <- function(channelID){
     arrange(date)
   return(videos)
 }
-
-#Get Crowder videos
-crowderVideos <- get_videos(crowderID)
 
 # Get statistics of the videos and make data frame
 
@@ -81,4 +52,55 @@ get_video_stats <- function(videos) {
            commentCount = as.numeric(as.character(commentCount)))
 }
 
+# Introduction to YouTubers
+
+crowderStats <- get_channel_stats(crowderID)
+shapiroStats <- get_channel_stats(shapiroID)
+contraStats <- get_channel_stats(contraID)
+shaunStats <- get_channel_stats(shaunID)
+
+crowderStats = do.call(rbind.data.frame, crowderStats["statistics"]) %>%
+  as.tibble() %>%
+  mutate(subscriberCount = as.numeric(as.character(subscriberCount)),
+         viewRatio = as.numeric(as.character(viewCount))/as.numeric(as.character(videoCount)))
+         
+shapiroStats = do.call(rbind.data.frame, shapiroStats["statistics"]) %>%
+  as.tibble() %>%
+  mutate(subscriberCount = as.numeric(as.character(subscriberCount)),
+         viewRatio = as.numeric(as.character(viewCount))/as.numeric(as.character(videoCount)))
+
+contraStats = do.call(rbind.data.frame, contraStats["statistics"]) %>%
+  as.tibble() %>%
+  mutate(subscriberCount = as.numeric(as.character(subscriberCount)),
+         viewRatio = as.numeric(as.character(viewCount))/as.numeric(as.character(videoCount)))
+
+shaunStats = do.call(rbind.data.frame, shaunStats["statistics"]) %>%
+  as.tibble() %>%
+  mutate(subscriberCount = as.numeric(as.character(subscriberCount)),
+         viewRatio = as.numeric(as.character(viewCount))/as.numeric(as.character(videoCount)))
+
+subCounts <- data.frame(Names = c("Steven Crowder","Ben Shapiro","Contrapoints", "Shaun"), 
+                  SubscriberCount = c(crowderStats$subscriberCount,shapiroStats$subscriberCount,contraStats$subscriberCount,shaunStats$subscriberCount))
+
+viewCountRatios <- data.frame(Names = c("Steven Crowder","Ben Shapiro","Contrapoints", "Shaun"), 
+                              ViewRatio = c(crowderStats$viewRatio,shapiroStats$viewRatio,contraStats$viewRatio,shaunStats$viewRatio))
+
+subs <- ggplot(subCounts, aes(x=Names, y = SubscriberCount,fill=Names)) +
+  geom_bar(stat="identity", width = 0.3) +
+  coord_flip() +
+  theme_minimal()
+
+viewRatios <- ggplot(viewCountRatios, aes(x=Names, y = ViewRatio,fill=Names)) +
+  geom_bar(stat="identity", width = 0.3) +
+  coord_flip() +
+  theme_minimal()
+
+options(scipen=10000) #remove scientific notation
+subs
+viewRatios
+
+#Get Crowder videos
+crowderVideos <- get_videos(crowderID)
 crowderVideoStats <- get_video_stats(crowderVideos)
+
+
