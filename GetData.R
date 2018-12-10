@@ -85,12 +85,12 @@ subCounts <- data.frame(Names = c("Steven Crowder","Ben Shapiro","Contrapoints",
 viewCountRatios <- data.frame(Names = c("Steven Crowder","Ben Shapiro","Contrapoints", "Shaun"), 
                               ViewRatio = c(crowderStats$viewRatio,shapiroStats$viewRatio,contraStats$viewRatio,shaunStats$viewRatio))
 
-subs <- ggplot(subCounts, aes(x=Names, y = SubscriberCount,fill=Names)) +
+subs <- ggplot(subCounts, aes(x = reorder(Names, SubscriberCount), y = SubscriberCount,fill=Names)) +
   geom_bar(stat="identity", width = 0.3) +
   coord_flip() +
   theme_minimal()
 
-viewRatios <- ggplot(viewCountRatios, aes(x=Names, y = ViewRatio,fill=Names)) +
+viewRatios <- ggplot(viewCountRatios, aes(x = reorder(Names, ViewRatio), y = ViewRatio,fill=Names)) +
   geom_bar(stat="identity", width = 0.3) +
   coord_flip() +
   theme_minimal()
@@ -103,4 +103,24 @@ viewRatios
 crowderVideos <- get_videos(crowderID)
 crowderVideoStats <- get_video_stats(crowderVideos)
 
+shapiroVideos <- get_videos(shapiroID)
+shapiroVideoStats <- get_video_stats(shapiroVideos)
+
+contraVideos <- get_videos(contraID)
+contraVideoStats <- get_video_stats(contraVideos)
+
+shaunVideos <- get_videos(shaunID)
+shaunVideoStats <- get_video_stats(shaunVideos)
+
+engage <- data.frame(Names = c("Steven Crowder","Ben Shapiro","Contrapoints", "Shaun"),
+                     noViews = c(sum(crowderVideoStats$viewCount), sum(shapiroVideoStats$viewCount), sum(contraVideoStats$viewCount), sum(shaunVideoStats$viewCount)),
+                     noLikes = c(sum(crowderVideoStats$likeCount), sum(shapiroVideoStats$likeCount), sum(contraVideoStats$likeCount), sum(shaunVideoStats$likeCount)),
+                     noDislikes = c(sum(crowderVideoStats$dislikeCount), sum(shapiroVideoStats$dislikeCount), sum(contraVideoStats$dislikeCount), sum(shaunVideoStats$dislikeCount)),
+                     politicalSide = c("Right","Right","Left","Left"))
+
+engagePol <- group_by(engage, politicalSide) %>%
+  summarise(numViews = sum(noViews), numLikes = sum(noLikes), numDislikes = sum(noDislikes)) %>%
+  mutate(reactRatio = (numLikes+numDislikes)/numViews, 
+         likeRatio = numLikes/numViews,
+         dislikeRatio = numDislikes/numViews)
 
