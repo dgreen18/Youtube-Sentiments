@@ -99,7 +99,8 @@ options(scipen=10000) #remove scientific notation
 subs
 viewRatios
 
-#Get Crowder videos
+# Engagement by Political Bent
+
 crowderVideos <- get_videos(crowderID)
 crowderVideoStats <- get_video_stats(crowderVideos)
 
@@ -112,15 +113,44 @@ contraVideoStats <- get_video_stats(contraVideos)
 shaunVideos <- get_videos(shaunID)
 shaunVideoStats <- get_video_stats(shaunVideos)
 
-engage <- data.frame(Names = c("Steven Crowder","Ben Shapiro","Contrapoints", "Shaun"),
-                     noViews = c(sum(crowderVideoStats$viewCount), sum(shapiroVideoStats$viewCount), sum(contraVideoStats$viewCount), sum(shaunVideoStats$viewCount)),
-                     noLikes = c(sum(crowderVideoStats$likeCount), sum(shapiroVideoStats$likeCount), sum(contraVideoStats$likeCount), sum(shaunVideoStats$likeCount)),
-                     noDislikes = c(sum(crowderVideoStats$dislikeCount), sum(shapiroVideoStats$dislikeCount), sum(contraVideoStats$dislikeCount), sum(shaunVideoStats$dislikeCount)),
-                     politicalSide = c("Right","Right","Left","Left"))
+rightViews <- sum(crowderVideoStats$viewCount) + sum(shapiroVideoStats$viewCount)
+rightLikes <- sum(crowderVideoStats$likeCount) + sum(shapiroVideoStats$likeCount)
+rightDislikes <- sum(crowderVideoStats$dislikeCount) + sum(shapiroVideoStats$dislikeCount)
+rightReacts <- rightLikes+rightDislikes
+rightReactsRatio <- trunc((rightReacts/rightViews)*100)
+rightLeftover <-  100-rightReactsRatio
+rightLikeRatio <- ceiling((rightLikes/rightReacts)*100)
+rightDislikeRatio <- floor((rightDislikes/rightReacts)*100)
 
-engagePol <- group_by(engage, politicalSide) %>%
-  summarise(numViews = sum(noViews), numLikes = sum(noLikes), numDislikes = sum(noDislikes)) %>%
-  mutate(reactRatio = (numLikes+numDislikes)/numViews, 
-         likeRatio = numLikes/numViews,
-         dislikeRatio = numDislikes/numViews)
+
+leftViews <- sum(contraVideoStats$viewCount) + sum(shaunVideoStats$viewCount)
+leftLikes <- sum(contraVideoStats$likeCount) + sum(shaunVideoStats$likeCount)
+leftDislikes <- sum(contraVideoStats$dislikeCount) + sum(shaunVideoStats$dislikeCount)
+leftReacts <- leftLikes+leftDislikes
+leftReactsRatio <- trunc((leftReacts/leftViews)*100)
+leftLeftover <-  100-leftReactsRatio
+leftLikeRatio <- ceiling((leftLikes/leftReacts)*100)
+leftDislikeRatio <- floor((leftDislikes/leftReacts)*100)
+
+engage <- data.frame(Names = c("ReactRatio","Leftover"),
+                     Num = c(rightReactsRatio, rightLeftover, leftReactsRatio,leftLeftover),
+                     PoliticalSide = c("Right","Right","Left","Left")) 
+
+engage2 <- data.frame(Names = c("LikeRatio","DislikeRatio"),
+                      Num = c(rightLikeRatio,rightDislikeRatio,leftLikeRatio,leftDislikeRatio),
+                      PoliticalSide = c("Right","Right", "Left","Left"))
+
+bp<- ggplot(engage, aes(x= factor(1), y=Num, fill = Names))+
+  geom_bar(stat = "identity",width = 0.5) +
+  facet_wrap(~PoliticalSide) + 
+  geom_text(aes(x = factor(1), y = Num-2.3,label = paste0(Num,"%")), size=4)
+bp
+
+bp2<- ggplot(engage2, aes(x= Names, y=Num, fill = Names))+
+  geom_bar(stat = "identity",width=0.5) +
+  facet_wrap(~PoliticalSide) + 
+  geom_text(aes(x = Names, y = Num-1.7,label = paste0(Num,"%")), size=4)
+bp2
+
+
 
