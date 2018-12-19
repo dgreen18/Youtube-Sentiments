@@ -198,7 +198,7 @@ commentsShaun_text = lapply(commentsShaun,function(x){
 commentsShaun_text = tibble(text = Reduce(c, commentsShaun_text)) %>%
   mutate(text = stri_trans_general(tolower(text), "Latin-ASCII"))
 
-commentsCrowder = lapply(as.character(crowderVideosBrief$video_id), function(x){
+commentsCrowder = lapply(as.character(crowderVideos$video_id), function(x){
   get_comment_threads(c(video_id = x), max_results = 1000)
 })
 commentsCrowder_text = lapply(commentsCrowder,function(x){
@@ -207,7 +207,7 @@ commentsCrowder_text = lapply(commentsCrowder,function(x){
 commentsCrowder_text = tibble(text = Reduce(c, commentsCrowder_text)) %>%
   mutate(text = stri_trans_general(tolower(text), "Latin-ASCII"))
 
-commentsShapiro = lapply(as.character(shapiroVideosBrief$video_id), function(x){
+commentsShapiro = lapply(as.character(shapiroVideos$video_id), function(x){
   get_comment_threads(c(video_id = x), max_results = 1000)
 })
 commentsShapiro_text = lapply(commentsShapiro,function(x){
@@ -234,13 +234,22 @@ tidy_right_comments <- rightComments %>%
   tidytext::unnest_tokens(word, text) %>%
   anti_join(custom_stop_words, by = "word")
 
-# Plots faceting most used words by sentiment
-facetLeft <- tidy_left_comments  %>%
+leftTokenScores <- tidy_left_comments %>%
   inner_join(get_sentiments("nrc"), by = "word") %>% #assign sentiment based on NRC lexicon
   count(word, sentiment, sort = TRUE) %>% 
   group_by(sentiment) %>%
   top_n(10) %>%
-  ungroup() %>%
+  ungroup() 
+  
+rightTokensScores <- tidy_right_comments %>%
+  inner_join(get_sentiments("nrc"), by = "word") %>% 
+  count(word, sentiment, sort = TRUE) %>% 
+  group_by(sentiment) %>%
+  top_n(10) %>%
+  ungroup()
+  
+# Plots faceting most used words by sentiment
+facetLeft <- leftTokenScores  %>%
   mutate(word = reorder(word, n))
 
 facetLeftPlot <- ggplot(facetLeft, aes(word, n, fill = sentiment)) +
@@ -254,12 +263,7 @@ facetLeftPlot <- ggplot(facetLeft, aes(word, n, fill = sentiment)) +
   theme_minimal()
 facetLeftPlot
 
-facetRight <- tidy_right_comments  %>%
-  inner_join(get_sentiments("nrc"), by = "word") %>% 
-  count(word, sentiment, sort = TRUE) %>% 
-  group_by(sentiment) %>%
-  top_n(10) %>%
-  ungroup() %>%
+facetRight <- rightTokensScores  %>%
   mutate(word = reorder(word, n))
 
 facetRightPlot <- ggplot(facetRight, aes(word, n, fill = sentiment)) +
@@ -273,3 +277,42 @@ facetRightPlot <- ggplot(facetRight, aes(word, n, fill = sentiment)) +
   theme_minimal()
 facetRightPlot
 
+# Number of words associated with each sentiment for left and right
+
+sentimentLeft <- leftTokenScores %>%
+  mutate(pos_neg = ifelse(sentiment %in% c("positive", "anticipation", "joy", "trust", "surprise"), 
+                          "Positive", "Negative")) 
+
+sentimentLeftPlot <- ggplot(sentimentLeft, aes(reorder(sentiment, n), n)) +
+  geom_col(aes(fill = pos_neg), show.legend = FALSE) +
+  scale_fill_manual(values = c("red2", "green3")) +
+  xlab("Sentiment") +
+  ylab("Total Number of Words") + 
+  labs(title = "Total Number of Words by Sentiment or Emotion for Left Leaning YouTubers") +
+  coord_flip() +
+  theme(axis.text.x = element_text(colour="grey20",size=16,angle=0,hjust=.5,vjust=.5,face="plain"),
+        axis.text.y = element_text(colour="grey20",size=16,angle=0,hjust=1,vjust=0,face="plain"),  
+        axis.title.x = element_text(colour="grey20",size=19,angle=0,hjust=.5,vjust=0,face="bold"),
+        axis.title.y = element_text(colour="grey20",size=19,angle=90,hjust=.5,vjust=.5,face="bold"),
+        legend.text=element_text(size=16),
+        plot.title = element_text(color="blue",size = 25, face = "bold"))
+sentimentLeftPlot
+
+sentimentRight <- rightTokensScores %>%
+  mutate(pos_neg = ifelse(sentiment %in% c("positive", "anticipation", "joy", "trust", "surprise"), 
+                          "Positive", "Negative"))
+
+sentimentRightPlot <-ggplot(sentimentRight, aes(reorder(sentiment, n), n)) +
+  geom_col(aes(fill = pos_neg), show.legend = FALSE) +
+  scale_fill_manual(values = c("red2", "green3")) +
+  xlab("Sentiment") +
+  ylab("Total Number of Words") + 
+  labs(title = "Total Number of Words by Sentiment or Emotion for Right Leaning YouTubers") +
+  coord_flip() +
+  theme(axis.text.x = element_text(colour="grey20",size=16,angle=0,hjust=.5,vjust=.5,face="plain"),
+        axis.text.y = element_text(colour="grey20",size=16,angle=0,hjust=1,vjust=0,face="plain"),  
+        axis.title.x = element_text(colour="grey20",size=19,angle=0,hjust=.5,vjust=0,face="bold"),
+        axis.title.y = element_text(colour="grey20",size=19,angle=90,hjust=.5,vjust=.5,face="bold"),
+        legend.text=element_text(size=16),
+        plot.title = element_text(color="red",size = 25, face = "bold"))
+sentimentRightPlot
