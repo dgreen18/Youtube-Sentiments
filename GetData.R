@@ -215,3 +215,7 @@ commentsShapiro_text = lapply(commentsShapiro,function(x){
 })
 commentsShapiro_text = tibble(text = Reduce(c, commentsShapiro_text)) %>%
   mutate(text = stri_trans_general(tolower(text), "Latin-ASCII"))
+
+# Combining Left and Right channel comments
+leftComments = rbind(commentsContra_text,commentsShaun_text)
+rightComments = rbind(commentsCrowder_text,commentsShapiro_text)
