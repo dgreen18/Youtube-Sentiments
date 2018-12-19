@@ -520,5 +520,64 @@ oldSentimentRightPlot <- ggplot(oldSentimentRight, aes(reorder(sentiment, n), n)
   coord_flip()
 oldSentimentRightPlot
 
+# Comparing sentiment pre Trump to Now on Left and Right Channels
+
+# The comparison is between change in share of a particular sentiment
+# (number of words associated with a given sentiment/ total number of words)
+# on left and right leaning Youtube Channel's comment feeds
+# 3 months pre Trump's election to most recent 3 months
+
+# Creating new data frames containing share of sentiment as new column entry
+leftCommentsNew <- sentimentLeft %>%
+  group_by(sentiment) %>%
+  summarize(num = sum(n)) %>%
+  mutate(type = "Left",
+         percent = num/sum(num))
+
+rightCommentsNew <- sentimentRight %>%
+  group_by(sentiment) %>%
+  summarize(num = sum(n)) %>%
+  mutate(type = "Right",
+         percent = num/sum(num)) 
+
+leftCommentsOld <- oldSentimentLeft %>%
+  group_by(sentiment) %>%
+  summarize(num = sum(n)) %>%
+  mutate(type = "Left",
+         percent = num/sum(num))
+
+rightCommentsOld <- oldSentimentRight %>%
+  group_by(sentiment) %>%
+  summarize(num = sum(n)) %>%
+  mutate(type = "Right",
+         percent = num/sum(num))
+
+# Change in share of sentiment
+rightCommentsNew$percent = rightCommentsNew$percent - rightCommentsOld$percent
+leftCommentsNew$percent = leftCommentsNew$percent - leftCommentsOld$percent
+
+# Constructing joined Data Frame
+masterData <- rbind(leftCommentsNew,rightCommentsNew)
+
+# Ordering
+masterData$sentiment = factor(masterData$sentiment, levels=c("negative", "anger","disgust","fear","sadness","positive","joy","trust","anticipation","surprise"))
+
+# Plotting % change in share of sentiment for left and right leaning Youtube Channels
+
+masterPlot<- ggplot(masterData, aes(x= sentiment, y=percent*100, fill = type))+
+  geom_bar(stat = "identity",width = 0.5, position = position_dodge()) +
+  scale_fill_manual(values = c("blue", "red")) +
+  labs(title = "Percent Change in Share of Sentiment From Before Trump Election to Now") +
+  xlab("Sentiment") +
+  ylab("Percent Change") +
+  theme(legend.title = element_blank()) +
+  theme(axis.text.x = element_text(colour="grey20",size=17,angle=0,hjust=.5,vjust=.5,face="plain"),
+        axis.text.y = element_text(colour="grey20",size=17,angle=0,hjust=1,vjust=0,face="plain"),  
+        axis.title.x = element_text(colour="grey20",size=20,angle=0,hjust=.5,vjust=0,face="bold"),
+        axis.title.y = element_text(colour="grey20",size=20,angle=90,hjust=.5,vjust=.5,face="bold"),
+        legend.text=element_text(size=17),
+        plot.title = element_text(size = 27, face = "bold"))
+
+masterPlot
 
 
