@@ -442,3 +442,35 @@ likeChange <- ggplot(engage2Comp[which(engage2Comp$Num>0),], aes(x= Names, y=Num
   theme(legend.title = element_blank())
 likeChange
 
+# Get Old Comments
+
+commentsOldCrowder = lapply(as.character(crowderOldVideos$video_id), function(x){
+  get_comment_threads(c(video_id = x), max_results = 1000)
+})
+commentsOldCrowder_text = lapply(commentsOldCrowder,function(x){
+  as.character(x$textOriginal)
+})
+commentsOldCrowder_text = tibble(text = Reduce(c, commentsOldCrowder_text)) %>%
+  mutate(text = stri_trans_general(tolower(text), "Latin-ASCII"))
+
+commentsOldContra = lapply(as.character(contraOldVideos$video_id), function(x){
+  get_comment_threads(c(video_id = x), max_results = 1000)
+})
+commentsOldContra_text = lapply(commentsOldContra,function(x){
+  as.character(x$textOriginal)
+})
+commentsOldContra_text = tibble(text = Reduce(c, commentsOldContra_text)) %>%
+  mutate(text = stri_trans_general(tolower(text), "Latin-ASCII"))
+
+commentsOldShaun = lapply(as.character(shaunOldVideos$video_id), function(x){
+  get_comment_threads(c(video_id = x), max_results = 1000)
+})
+commentsOldShaun_text = lapply(commentsOldShaun,function(x){
+  as.character(x$textOriginal)
+})
+commentsOldShaun_text = tibble(text = Reduce(c, commentsOldShaun_text)) %>%
+  mutate(text = stri_trans_general(tolower(text), "Latin-ASCII"))
+
+rightOldComments = commentsOldCrowder_text
+leftOldComments = rbind(commentsOldContra_text,commentsOldShaun_text)
+
