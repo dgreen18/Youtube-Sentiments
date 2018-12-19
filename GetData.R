@@ -7,7 +7,7 @@ library(ggplot2)
 library(tidytext)
 
 
-#OAuth and Connection
+# OAuth and Connection
 app_id <- "830360114408-ev1q4bqv76daq7o0i4b2dj48dehomt36.apps.googleusercontent.com"
 app_secret <- "OjLU0iwI5yJjk9axkpwHUjgC"
 yt_oauth(app_id, app_secret)
@@ -25,7 +25,7 @@ shapiroID <- "UCnQC_G5Xsjhp9fEJKuIcrSw"
 contraID <- "UCNvsIonJdJ5E4EXMa65VYpA"
 shaunID <- "UCJ6o36XL0CpYb6U5dNBiXHQ"
 
-#Get all videos of a channel from the last 3 months
+# Get all videos of a channel from the last 3 months
 get_videos <- function(channelID){
   videos = yt_search(term="", type="video", channel_id = channelID) #search by channel
   videos = videos %>% #get videos from past 3 months
@@ -80,21 +80,21 @@ shaunStats = do.call(rbind.data.frame, shaunStats["statistics"]) %>%
   mutate(subscriberCount = as.numeric(as.character(subscriberCount)),
          viewRatio = as.numeric(as.character(viewCount))/as.numeric(as.character(videoCount)))
 
-#Put subscriber counts and views/video ratio in dataframes
+# Put subscriber counts and views/video ratio in dataframes
 subCounts <- data.frame(Names = c("Steven Crowder","Ben Shapiro","Contrapoints", "Shaun"), 
                   SubscriberCount = c(crowderStats$subscriberCount,shapiroStats$subscriberCount,contraStats$subscriberCount,shaunStats$subscriberCount))
 
 viewCountRatios <- data.frame(Names = c("Steven Crowder","Ben Shapiro","Contrapoints", "Shaun"), 
                               ViewRatio = c(crowderStats$viewRatio,shapiroStats$viewRatio,contraStats$viewRatio,shaunStats$viewRatio))
 
-#Plot subscriber count
+# Plot subscriber count
 subs <- ggplot(subCounts, aes(x = reorder(Names, SubscriberCount), y = SubscriberCount,fill=Names)) +
   geom_bar(stat="identity", width = 0.3) +
   coord_flip() +
   theme_minimal() +
   labs(title = "No. of Subscribers/ Chosen YouTuber", y = "Number of Subscribers", x= "YouTuber")
 
-#Plot views/video ratio
+# Plot views/video ratio
 viewRatios <- ggplot(viewCountRatios, aes(x = reorder(Names, ViewRatio), y = ViewRatio,fill=Names)) +
   geom_bar(stat="identity", width = 0.3) +
   coord_flip() +
@@ -176,7 +176,7 @@ bp2<- ggplot(engage2[which(engage2$Num>0),], aes(x= Names, y=Num, fill = Names))
   theme(legend.title = element_blank())
 bp2
 
-#Beginning Sentiment Analysis
+# Beginning Sentiment Analysis
 
 # Obtain comments for Youtubers
 # Change data type to data frame containing only the comment text 
@@ -316,3 +316,39 @@ sentimentRightPlot <-ggplot(sentimentRight, aes(reorder(sentiment, n), n)) +
         legend.text=element_text(size=16),
         plot.title = element_text(color="red",size = 25, face = "bold"))
 sentimentRightPlot
+
+# Plotting most used 5-grams
+left5grams <- leftComments %>% #break down sentences into words
+  tidytext::unnest_tokens(five_gram, text, token = "ngrams", n = 5) 
+
+right5grams <- rightComments %>% #break down sentences into words
+  tidytext::unnest_tokens(five_gram, text, token = "ngrams", n = 5) 
+
+leftTop7_5Grams <- left5grams %>%
+  count(five_gram, sort = TRUE) %>%
+  top_n(7) %>%
+  mutate(five_gram = reorder(five_gram, n)) 
+
+leftTop7_5GramsPlot <- ggplot(leftTop7_5Grams, aes(five_gram, n)) +
+  geom_col(fill = "red", show.legend = FALSE) +
+  xlab("5-grams") +
+  ylab("Times Mentioned") +
+  labs(title = "Most Common 5-grams for Left Leaning YouTubers") +
+  coord_flip() +
+  theme_minimal()
+leftTop7_5GramsPlot
+
+rightTop7_5Grams <- right5grams %>% 
+  count(five_gram, sort = TRUE) %>%
+  top_n(7) %>%
+  mutate(five_gram = reorder(five_gram, n))
+
+rightTop7_5GramsPlot <- ggplot(rightTop7_5Grams, aes(five_gram, n)) +
+  geom_col(fill = "red", show.legend = FALSE) +
+  xlab("5-grams") +
+  ylab("Times Mentioned") +
+  labs(title = "Most Common 5-grams for Right Leaning YouTubers") +
+  coord_flip() +
+  theme_minimal()
+rightTop7_5GramsPlot
+
