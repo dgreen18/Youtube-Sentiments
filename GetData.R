@@ -474,3 +474,51 @@ commentsOldShaun_text = tibble(text = Reduce(c, commentsOldShaun_text)) %>%
 rightOldComments = commentsOldCrowder_text
 leftOldComments = rbind(commentsOldContra_text,commentsOldShaun_text)
 
+# Sentiment Analysis of Old Comments
+ 
+tidy_left_old_comments <- leftOldComments %>% #break down sentences into words
+  tidytext::unnest_tokens(word, text) %>%
+  anti_join(custom_stop_words, by = "word")
+
+tidy_right_old_comments <- rightOldComments %>% #break down sentences into words
+  tidytext::unnest_tokens(word, text) %>%
+  anti_join(custom_stop_words, by = "word")
+
+oldSentimentLeft <- tidy_left_old_comments  %>%
+  inner_join(get_sentiments("nrc"), by = "word") %>% 
+  count(word, sentiment, sort = TRUE) %>% 
+  group_by(sentiment) %>%
+  top_n(10) %>%
+  ungroup() %>%
+  mutate(pos_neg = ifelse(sentiment %in% c("positive", "anticipation", "joy", "trust", "surprise"), 
+                          "Positive", "Negative")) 
+
+oldSentimentLeftPlot <- ggplot(oldSentimentLeft, aes(reorder(sentiment, n), n)) +
+  geom_col(aes(fill = pos_neg), show.legend = FALSE) +
+  scale_fill_manual(values = c("red2", "green3")) +
+  xlab("Sentiment") +
+  ylab("Total Number of Words") + 
+  labs(title = "Total Number of Words by Sentiment or Emotion for Left Leaning YouTubers Before Trump Election") +
+  coord_flip()
+oldSentimentLeftPlot
+
+oldSentimentRight <- tidy_right_old_comments %>%
+  inner_join(get_sentiments("nrc"), by = "word") %>% 
+  count(word, sentiment, sort = TRUE) %>% 
+  group_by(sentiment) %>%
+  top_n(10) %>%
+  ungroup() %>%
+  mutate(pos_neg = ifelse(sentiment %in% c("positive", "anticipation", "joy", "trust", "surprise"), 
+                          "Positive", "Negative"))
+
+oldSentimentRightPlot <- ggplot(oldSentimentRight, aes(reorder(sentiment, n), n)) +
+  geom_col(aes(fill = pos_neg), show.legend = FALSE) +
+  scale_fill_manual(values = c("red2", "green3")) +
+  xlab("Sentiment") +
+  ylab("Total Number of Words") + 
+  labs(title = "Total Number of Words by Sentiment or Emotion for Right Leaning YouTubers Before Trump Election") +
+  coord_flip()
+oldSentimentRightPlot
+
+
+
