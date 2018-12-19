@@ -260,7 +260,7 @@ sentimentRightPlot <-ggplot(sentimentRight, aes(reorder(sentiment, n), n)) +
         axis.title.x = element_text(colour="grey20",size=11,angle=0,hjust=.5,vjust=0,face="bold"),
         axis.title.y = element_text(colour="grey20",size=11,angle=90,hjust=.5,vjust=.5,face="bold"),
         legend.text=element_text(size=8),
-        plot.title = element_text(color="red",size = 12, face = "bold"))
+        plot.title = element_text(color="red",size = 11, face = "bold"))
 ```
 
 Now, we turn our attention to looking at how the community of viewers changed in the way they engage with left-leaning and right-leaning content prior to Trump's election to now. For this analysis, we consider all the videos uploaded by our four chosen channels in the three months prior to Trump's election in November of 2015. We then proceed with the same process as described above to get comments for all the videos uploaded by the channels during those three months. We run the 'NRC' Lexicon analysis on the comments and obtain two new data frames, similar to the ones described as above. 
