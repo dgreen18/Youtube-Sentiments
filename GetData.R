@@ -377,3 +377,68 @@ contraOldVideoStats <- get_video_stats(contraOldVideos)
 shaunOldVideos <- get_old_videos(shaunID)
 shaunOldVideoStats <- get_video_stats(shaunOldVideos)
 
+# Pre-trump engagement levels
+
+rightOldViews <- sum(crowderOldVideoStats$viewCount) 
+rightOldLikes <- sum(crowderOldVideoStats$likeCount) 
+rightOldDislikes <- sum(crowderOldVideoStats$dislikeCount) 
+rightOldReacts <- rightOldLikes+rightOldDislikes
+rightOldReactsRatio <- trunc((rightOldReacts/rightOldViews)*100)
+rightOldLeftover <-  100-rightOldReactsRatio
+rightOldLikeRatio <- ceiling((rightOldLikes/rightOldReacts)*100)
+rightOldDislikeRatio <- floor((rightOldDislikes/rightOldReacts)*100)
+
+leftOldViews <- sum(contraOldVideoStats$viewCount) + sum(shaunOldVideoStats$viewCount)
+leftOldLikes <- sum(contraOldVideoStats$likeCount) + sum(shaunOldVideoStats$likeCount)
+leftOldDislikes <- sum(contraOldVideoStats$dislikeCount) + sum(shaunOldVideoStats$dislikeCount)
+leftOldReacts <- leftOldLikes+leftOldDislikes
+leftOldReactsRatio <- trunc((leftOldReacts/leftOldViews)*100)
+leftOldLeftover <-  100-leftOldReactsRatio
+leftOldLikeRatio <- ceiling((leftOldLikes/leftOldReacts)*100)
+leftOldDislikeRatio <- floor((leftOldDislikes/leftOldReacts)*100)
+
+engage3 <- data.frame(Names = c("RightReactRatio","RightLeftover","LeftReactRatio","LeftLeftover"),
+                      Num = c(rightOldReactsRatio, rightOldLeftover, leftOldReactsRatio,leftOldLeftover),
+                      PoliticalSide = c("Right","Right","Left","Left"),
+                      ID = c(2,1,4,3),
+                      Type =c("Old"),
+                      Kind = c("Ratio")) 
+
+engage4 <- data.frame(Names = c("RightLikeOldRatio","RightDislikeOldRatio","LeftLikeOldRatio","LeftDislikeOldRatio"),
+                      Num = c(rightOldLikeRatio,rightOldDislikeRatio,leftOldLikeRatio,leftOldDislikeRatio),
+                      PoliticalSide = c("Right","Right", "Left","Left"),
+                      ID = c(1,2,3,4),
+                      Type =c("Old"))
+
+# Combining now engagement and pre-trump engagement
+engageComp = rbind(engage3,engage) %>%
+  arrange(ID)
+
+engage2Comp = rbind(engage4,engage2) %>%
+  arrange(ID)
+engage2Comp$Names <- factor(engage2Comp$Names, levels = engage2Comp$Names)
+
+# Reactions/Video Before and Now 
+reactChange <- ggplot(engageComp, aes(x= Type, y=Num, fill = Names))+
+  geom_bar(stat = "identity",width = 0.5) +
+  facet_wrap(~PoliticalSide) + 
+  geom_text(aes(x = Type, y = Num-2.3,label = paste0(Num,"%")), size=4) +
+  labs(title = "Engagement(% Reactions/Views) for Left & Right Leaning YouTubers Before Trump Election and Now", x = "Engagement", y= "Percentage(%)") +
+  theme(legend.title = element_blank()) +
+  theme(axis.text.x = element_text(colour="grey20",size=16,angle=0,hjust=.5,vjust=.5,face="plain"),
+        axis.text.y = element_text(colour="grey20",size=16,angle=0,hjust=1,vjust=0,face="plain"),  
+        axis.title.x = element_text(colour="grey20",size=19,angle=0,hjust=.5,vjust=0,face="bold"),
+        axis.title.y = element_text(colour="grey20",size=19,angle=90,hjust=.5,vjust=.5,face="bold"),
+        legend.text=element_text(size=16),
+        plot.title = element_text(color="black",size = 25, face = "bold"))
+reactChange
+
+# Likes/Dislikes Percentage Before and Now
+likeChange <- ggplot(engage2Comp[which(engage2Comp$Num>0),], aes(x= Names, y=Num, fill = Type))+
+  geom_bar(stat = "identity",width=0.5,position = position_dodge()) +
+  facet_wrap(~PoliticalSide,scales="free_x") + 
+  geom_text(aes(x = Names, y = Num-1.7,label = paste0(Num,"%")), size=4) +
+  labs(title = "% Likes(/Reacts) v/s % Dislikes(/Reacts)  for Left & Right Leaning YouTubers Before Trump Election and Now", x = "Dislike and Like Ratios", y= "Percentage(%)") +
+  theme(legend.title = element_blank())
+likeChange
+
