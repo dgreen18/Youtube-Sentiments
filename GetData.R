@@ -4,6 +4,8 @@ library(dplyr)
 library(tibble)
 library(stringi)
 library(ggplot2)
+library(tidytext)
+
 
 #OAuth and Connection
 app_id <- "830360114408-ev1q4bqv76daq7o0i4b2dj48dehomt36.apps.googleusercontent.com"
@@ -59,6 +61,10 @@ shapiroStats <- get_channel_stats(shapiroID)
 contraStats <- get_channel_stats(contraID)
 shaunStats <- get_channel_stats(shaunID)
 
+crowderstats1 = as.data.frame(crowderStats)
+crowderStats2 = do.call(rbind.data.frame, crowderStats["statistics"]) %>%
+  mutate(Name = crowderStats[4[1]])
+
 crowderStats = do.call(rbind.data.frame, crowderStats["statistics"]) %>%
   as.tibble() %>%
   mutate(subscriberCount = as.numeric(as.character(subscriberCount)),
@@ -88,12 +94,14 @@ viewCountRatios <- data.frame(Names = c("Steven Crowder","Ben Shapiro","Contrapo
 subs <- ggplot(subCounts, aes(x = reorder(Names, SubscriberCount), y = SubscriberCount,fill=Names)) +
   geom_bar(stat="identity", width = 0.3) +
   coord_flip() +
-  theme_minimal()
+  theme_minimal() +
+  labs(title = "No. of Subscribers/ Chosen YouTuber", y = "Number of Subscribers", x= "YouTuber")
 
 viewRatios <- ggplot(viewCountRatios, aes(x = reorder(Names, ViewRatio), y = ViewRatio,fill=Names)) +
   geom_bar(stat="identity", width = 0.3) +
   coord_flip() +
-  theme_minimal()
+  theme_minimal() +
+  labs(title = "Views/Video for Each Chosen YouTuber", y = "Views/Video", x= "YouTuber")
 
 options(scipen=10000) #remove scientific notation
 subs
@@ -132,25 +140,426 @@ leftLeftover <-  100-leftReactsRatio
 leftLikeRatio <- ceiling((leftLikes/leftReacts)*100)
 leftDislikeRatio <- floor((leftDislikes/leftReacts)*100)
 
-engage <- data.frame(Names = c("ReactRatio","Leftover"),
+engage <- data.frame(Names = c("RightReactRatio","RightLeftover","LeftReactRatio","LeftLeftover"),
                      Num = c(rightReactsRatio, rightLeftover, leftReactsRatio,leftLeftover),
-                     PoliticalSide = c("Right","Right","Left","Left")) 
+                     PoliticalSide = c("Right","Right","Left","Left"),
+                     ID = c(2,1,4,3),
+                     Type =c("New"),
+                     Kind = c("Ratio")) 
 
-engage2 <- data.frame(Names = c("LikeRatio","DislikeRatio"),
+engage2 <- data.frame(Names = c("RightLikeRatio","RightDislikeRatio","LeftLikeRatio","LeftDislikeRatio"),
                       Num = c(rightLikeRatio,rightDislikeRatio,leftLikeRatio,leftDislikeRatio),
-                      PoliticalSide = c("Right","Right", "Left","Left"))
+                      PoliticalSide = c("Right","Right", "Left","Left"),
+                      ID = c(1,2,3,4),
+                      Type =c("New"))
 
-bp<- ggplot(engage, aes(x= factor(1), y=Num, fill = Names))+
+bp<- ggplot(engage, aes(x= Kind, y=Num, fill = Names))+
   geom_bar(stat = "identity",width = 0.5) +
   facet_wrap(~PoliticalSide) + 
-  geom_text(aes(x = factor(1), y = Num-2.3,label = paste0(Num,"%")), size=4)
-bp
+  geom_text(aes(x = Kind, y = Num-2.3,label = paste0(Num,"%")), size=4) +
+  labs(title = "Engagement(% Reactions/Views) for Left & Right Leaning YouTubers", x = "Engagement", y= "Percentage(%)") +
+  theme(legend.title = element_blank()) 
+bp 
 
-bp2<- ggplot(engage2, aes(x= Names, y=Num, fill = Names))+
+bp2<- ggplot(engage2[which(engage2$Num>0),], aes(x= Names, y=Num, fill = Names))+
   geom_bar(stat = "identity",width=0.5) +
-  facet_wrap(~PoliticalSide) + 
-  geom_text(aes(x = Names, y = Num-1.7,label = paste0(Num,"%")), size=4)
+  facet_wrap(~PoliticalSide,scales="free_x") + 
+  geom_text(aes(x = Names, y = Num-1.7,label = paste0(Num,"%")), size=4) +
+  labs(title = "% Likes(/Reacts) v/s % Dislikes(/Reacts)  for Left & Right Leaning YouTubers", x = "Dislike and Like Ratios", y= "Percentage(%)") +
+  theme(legend.title = element_blank())
 bp2
 
+# Beginning Sentiment Analysis
+
+commentsContra = lapply(as.character(contraVideos$video_id), function(x){
+  get_comment_threads(c(video_id = x), max_results = 1000)
+})
+commentsContra_text = lapply(commentsContra,function(x){
+  as.character(x$textOriginal)
+})
+commentsContra_text = tibble(text = Reduce(c, commentsContra_text)) %>%
+  mutate(text = stri_trans_general(tolower(text), "Latin-ASCII"))
+
+commentsShaun = lapply(as.character(shaunVideos$video_id), function(x){
+  get_comment_threads(c(video_id = x), max_results = 1000)
+})
+commentsShaun_text = lapply(commentsShaun,function(x){
+  as.character(x$textOriginal)
+})
+commentsShaun_text = tibble(text = Reduce(c, commentsShaun_text)) %>%
+  mutate(text = stri_trans_general(tolower(text), "Latin-ASCII"))
+
+leftComments = rbind(commentsContra_text,commentsShaun_text)
 
 
+
+custom_stop_words <- bind_rows(data_frame(word = c("john","white"), 
+                                          lexicon = c("custom")),
+                               stop_words)
+
+tidy_left_comments <- leftComments %>% #break down sentences into words
+  tidytext::unnest_tokens(word, text) %>%
+  anti_join(custom_stop_words, by = "word")
+
+tidy_left_comments  %>%
+  inner_join(get_sentiments("nrc"), by = "word") %>% 
+  count(word, sentiment, sort = TRUE) %>% 
+  group_by(sentiment) %>%
+  top_n(10) %>%
+  ungroup() %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(word, n, fill = sentiment)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~sentiment, scales = "free_y") +
+  xlab(NULL) +
+  ylab(NULL) +
+  labs(title = "Most Common Words faceted by Emotion and Sentiment for Left Leaning YouTubers") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  coord_flip() +
+  theme_minimal()
+
+tidy_left_comments2 <- leftComments %>% #break down sentences into words
+  tidytext::unnest_tokens(word, text) %>%
+  anti_join(custom_stop_words, by = "word")
+
+tidyleftComments2 <- tidy_left_comments2 %>%
+  inner_join(get_sentiments("nrc"), by = "word") %>% 
+  count(word, sentiment, sort = TRUE) %>% 
+  group_by(sentiment) %>%
+  top_n(10) %>%
+  ungroup() %>%
+  mutate(pos_neg = ifelse(sentiment %in% c("positive", "anticipation", "joy", "trust", "surprise"), 
+                          "Positive", "Negative")) 
+  
+  g<- ggplot(tidyleftComments2, aes(reorder(sentiment, n), n)) +
+  geom_col(aes(fill = pos_neg), show.legend = FALSE) +
+  scale_fill_manual(values = c("red2", "green3")) +
+  xlab("Sentiment") +
+  ylab("Total Number of Words") + 
+  labs(title = "Total Number of Words by Sentiment or Emotion for Left Leaning YouTubers") +
+  coord_flip() +
+    theme(axis.text.x = element_text(colour="grey20",size=16,angle=0,hjust=.5,vjust=.5,face="plain"),
+          axis.text.y = element_text(colour="grey20",size=16,angle=0,hjust=1,vjust=0,face="plain"),  
+          axis.title.x = element_text(colour="grey20",size=19,angle=0,hjust=.5,vjust=0,face="bold"),
+          axis.title.y = element_text(colour="grey20",size=19,angle=90,hjust=.5,vjust=.5,face="bold"),
+          legend.text=element_text(size=16),
+          plot.title = element_text(color="blue",size = 25, face = "bold"))
+  
+  g
+
+tidy_left_comments3 <- leftComments %>% #break down sentences into words
+  tidytext::unnest_tokens(five_gram, text, token = "ngrams", n = 5) 
+  
+
+tidy_left_comments3 %>%
+  count(five_gram, sort = TRUE) %>%
+  top_n(7) %>%
+  mutate(five_gram = reorder(five_gram, n)) %>%
+  ggplot(aes(five_gram, n)) +
+  geom_col(fill = "red", show.legend = FALSE) +
+  xlab("5-grams") +
+  ylab("Times Mentioned") +
+  labs(title = "Most Common 5-grams for Left Leaning YouTubers") +
+  coord_flip() +
+  theme_minimal()
+
+crowderVideosBrief = crowderVideos %>%
+  head(5)
+
+shapiroVideosBrief = shapiroVideos %>%
+  head(15)
+
+commentsCrowder = lapply(as.character(crowderVideosBrief$video_id), function(x){
+  get_comment_threads(c(video_id = x), max_results = 1000)
+})
+commentsCrowder_text = lapply(commentsCrowder,function(x){
+  as.character(x$textOriginal)
+})
+commentsCrowder_text = tibble(text = Reduce(c, commentsCrowder_text)) %>%
+  mutate(text = stri_trans_general(tolower(text), "Latin-ASCII"))
+
+commentsShapiro = lapply(as.character(shapiroVideosBrief$video_id), function(x){
+  get_comment_threads(c(video_id = x), max_results = 1000)
+})
+commentsShapiro_text = lapply(commentsShapiro,function(x){
+  as.character(x$textOriginal)
+})
+commentsShapiro_text = tibble(text = Reduce(c, commentsShapiro_text)) %>%
+  mutate(text = stri_trans_general(tolower(text), "Latin-ASCII"))
+
+rightComments = rbind(commentsCrowder_text,commentsShapiro_text)
+
+tidy_right_comments <- rightComments %>% #break down sentences into words
+  tidytext::unnest_tokens(word, text) %>%
+  anti_join(custom_stop_words, by = "word")
+
+tidy_right_comments  %>%
+  inner_join(get_sentiments("nrc"), by = "word") %>% 
+  count(word, sentiment, sort = TRUE) %>% 
+  group_by(sentiment) %>%
+  top_n(10) %>%
+  ungroup() %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(word, n, fill = sentiment)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~sentiment, scales = "free_y") +
+  xlab(NULL) +
+  ylab(NULL) +
+  labs(title = "Most Common Words faceted by Emotion and Sentiment for Right Leaning YouTubers") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  coord_flip() +
+  theme_minimal()
+
+tidy_right_comments2 <- rightComments %>% #break down sentences into words
+  tidytext::unnest_tokens(word, text) %>%
+  anti_join(custom_stop_words, by = "word")
+
+tidyrightComments2<- tidy_right_comments2 %>%
+  inner_join(get_sentiments("nrc"), by = "word") %>% 
+  count(word, sentiment, sort = TRUE) %>% 
+  group_by(sentiment) %>%
+  top_n(10) %>%
+  ungroup() %>%
+  mutate(pos_neg = ifelse(sentiment %in% c("positive", "anticipation", "joy", "trust", "surprise"), 
+                          "Positive", "Negative"))
+
+  g1<-ggplot(tidyrightComments2, aes(reorder(sentiment, n), n)) +
+  geom_col(aes(fill = pos_neg), show.legend = FALSE) +
+  scale_fill_manual(values = c("red2", "green3")) +
+  xlab("Sentiment") +
+  ylab("Total Number of Words") + 
+  labs(title = "Total Number of Words by Sentiment or Emotion for Right Leaning YouTubers") +
+  coord_flip() +
+  theme(axis.text.x = element_text(colour="grey20",size=16,angle=0,hjust=.5,vjust=.5,face="plain"),
+          axis.text.y = element_text(colour="grey20",size=16,angle=0,hjust=1,vjust=0,face="plain"),  
+          axis.title.x = element_text(colour="grey20",size=19,angle=0,hjust=.5,vjust=0,face="bold"),
+          axis.title.y = element_text(colour="grey20",size=19,angle=90,hjust=.5,vjust=.5,face="bold"),
+          legend.text=element_text(size=16),
+          plot.title = element_text(color="red",size = 25, face = "bold"))
+  
+  g1
+
+tidy_right_comments3 <- rightComments %>% #break down sentences into words
+  tidytext::unnest_tokens(five_gram, text, token = "ngrams", n = 5) 
+
+
+tidy_right_comments3 %>%
+  count(five_gram, sort = TRUE) %>%
+  top_n(7) %>%
+  mutate(five_gram = reorder(five_gram, n)) %>%
+  ggplot(aes(five_gram, n)) +
+  geom_col(fill = "red", show.legend = FALSE) +
+  xlab("5-grams") +
+  ylab("Times Mentioned") +
+  labs(title = "Most Common 5-grams for Right Leaning YouTubers") +
+  coord_flip() +
+  theme_minimal()
+
+# Comparing with Pre Trump
+
+get_old_videos <- function(channelID){
+  videos = yt_search(term="", type="video", channel_id = channelID)
+  videos = videos %>%
+    mutate(date = as.Date(publishedAt)) %>%
+    filter(date > "2016-08-01", date  < "2016-11-01") %>%
+    arrange(date)
+  return(videos)
+}
+
+crowderOldVideos <- get_old_videos(crowderID)
+crowderOldVideoStats <- get_video_stats(crowderOldVideos)
+
+shapiroOldVideos <- get_old_videos(shapiroID)
+# Channel started post election
+
+contraOldVideos <- get_old_videos(contraID)
+contraOldVideoStats <- get_video_stats(contraOldVideos)
+
+shaunOldVideos <- get_old_videos(shaunID)
+shaunOldVideoStats <- get_video_stats(shaunOldVideos)
+
+rightOldViews <- sum(crowderOldVideoStats$viewCount) 
+rightOldLikes <- sum(crowderOldVideoStats$likeCount) 
+rightOldDislikes <- sum(crowderOldVideoStats$dislikeCount) 
+rightOldReacts <- rightOldLikes+rightOldDislikes
+rightOldReactsRatio <- trunc((rightOldReacts/rightOldViews)*100)
+rightOldLeftover <-  100-rightOldReactsRatio
+rightOldLikeRatio <- ceiling((rightOldLikes/rightOldReacts)*100)
+rightOldDislikeRatio <- floor((rightOldDislikes/rightOldReacts)*100)
+
+
+leftOldViews <- sum(contraOldVideoStats$viewCount) + sum(shaunOldVideoStats$viewCount)
+leftOldLikes <- sum(contraOldVideoStats$likeCount) + sum(shaunOldVideoStats$likeCount)
+leftOldDislikes <- sum(contraOldVideoStats$dislikeCount) + sum(shaunOldVideoStats$dislikeCount)
+leftOldReacts <- leftOldLikes+leftOldDislikes
+leftOldReactsRatio <- trunc((leftOldReacts/leftOldViews)*100)
+leftOldLeftover <-  100-leftOldReactsRatio
+leftOldLikeRatio <- ceiling((leftOldLikes/leftOldReacts)*100)
+leftOldDislikeRatio <- floor((leftOldDislikes/leftOldReacts)*100)
+
+engage3 <- data.frame(Names = c("RightReactRatio","RightLeftover","LeftReactRatio","LeftLeftover"),
+                     Num = c(rightOldReactsRatio, rightOldLeftover, leftOldReactsRatio,leftOldLeftover),
+                     PoliticalSide = c("Right","Right","Left","Left"),
+                     ID = c(2,1,4,3),
+                     Type =c("Old")) 
+
+engage4 <- data.frame(Names = c("RightLikeOldRatio","RightDislikeOldRatio","LeftLikeOldRatio","LeftDislikeOldRatio"),
+                      Num = c(rightOldLikeRatio,rightOldDislikeRatio,leftOldLikeRatio,leftOldDislikeRatio),
+                      PoliticalSide = c("Right","Right", "Left","Left"),
+                      ID = c(1,2,3,4),
+                      Type =c("Old"))
+
+engageComp = rbind(engage3,engage) %>%
+  arrange(ID)
+
+engage2Comp = rbind(engage4,engage2) %>%
+  arrange(ID)
+
+engage2Comp$Names <- factor(engage2Comp$Names, levels = engage2Comp$Names)
+
+bp3<- ggplot(engageComp, aes(x= Type, y=Num, fill = Names))+
+  geom_bar(stat = "identity",width = 0.5) +
+  facet_wrap(~PoliticalSide) + 
+  geom_text(aes(x = Type, y = Num-2.3,label = paste0(Num,"%")), size=4) +
+  labs(title = "Engagement(% Reactions/Views) for Left & Right Leaning YouTubers Before Trump Election and Now", x = "Engagement", y= "Percentage(%)") +
+  theme(legend.title = element_blank()) +
+  theme(axis.text.x = element_text(colour="grey20",size=16,angle=0,hjust=.5,vjust=.5,face="plain"),
+        axis.text.y = element_text(colour="grey20",size=16,angle=0,hjust=1,vjust=0,face="plain"),  
+        axis.title.x = element_text(colour="grey20",size=19,angle=0,hjust=.5,vjust=0,face="bold"),
+        axis.title.y = element_text(colour="grey20",size=19,angle=90,hjust=.5,vjust=.5,face="bold"),
+        legend.text=element_text(size=16),
+        plot.title = element_text(color="black",size = 25, face = "bold"))
+bp3
+
+bp4<- ggplot(engage2Comp[which(engage2Comp$Num>0),], aes(x= Names, y=Num, fill = Type))+
+  geom_bar(stat = "identity",width=0.5,position = position_dodge()) +
+  facet_wrap(~PoliticalSide,scales="free_x") + 
+  geom_text(aes(x = Names, y = Num-1.7,label = paste0(Num,"%")), size=4) +
+  labs(title = "% Likes(/Reacts) v/s % Dislikes(/Reacts)  for Left & Right Leaning YouTubers Before Trump Election and Now", x = "Dislike and Like Ratios", y= "Percentage(%)") +
+  theme(legend.title = element_blank())
+bp4
+
+
+crowderOldVideosBrief = crowderOldVideos %>%
+  head(5)
+
+commentsOldCrowder = lapply(as.character(crowderOldVideosBrief$video_id), function(x){
+  get_comment_threads(c(video_id = x), max_results = 1000)
+})
+
+commentsOldCrowder_text = lapply(commentsOldCrowder,function(x){
+  as.character(x$textOriginal)
+})
+commentsOldCrowder_text = tibble(text = Reduce(c, commentsOldCrowder_text)) %>%
+  mutate(text = stri_trans_general(tolower(text), "Latin-ASCII"))
+
+rightOldComments = commentsOldCrowder_text
+
+tidy_right_old_comments <- rightOldComments %>% #break down sentences into words
+  tidytext::unnest_tokens(word, text) %>%
+  anti_join(custom_stop_words, by = "word")
+
+tidyrightOldComments <- tidy_right_old_comments %>%
+  inner_join(get_sentiments("nrc"), by = "word") %>% 
+  count(word, sentiment, sort = TRUE) %>% 
+  group_by(sentiment) %>%
+  top_n(10) %>%
+  ungroup() %>%
+  mutate(pos_neg = ifelse(sentiment %in% c("positive", "anticipation", "joy", "trust", "surprise"), 
+                          "Positive", "Negative"))
+  g3 <- ggplot(tidyrightOldComments, aes(reorder(sentiment, n), n)) +
+  geom_col(aes(fill = pos_neg), show.legend = FALSE) +
+  scale_fill_manual(values = c("red2", "green3")) +
+  xlab("Sentiment") +
+  ylab("Total Number of Words") + 
+  labs(title = "Total Number of Words by Sentiment or Emotion for Right Leaning YouTubers Before Trump Election") +
+  coord_flip()
+  g3
+
+commentsOldContra = lapply(as.character(contraOldVideos$video_id), function(x){
+  get_comment_threads(c(video_id = x), max_results = 1000)
+})
+commentsOldContra_text = lapply(commentsOldContra,function(x){
+  as.character(x$textOriginal)
+})
+commentsOldContra_text = tibble(text = Reduce(c, commentsOldContra_text)) %>%
+  mutate(text = stri_trans_general(tolower(text), "Latin-ASCII"))
+
+commentsOldShaun = lapply(as.character(shaunOldVideos$video_id), function(x){
+  get_comment_threads(c(video_id = x), max_results = 1000)
+})
+commentsOldShaun_text = lapply(commentsOldShaun,function(x){
+  as.character(x$textOriginal)
+})
+commentsOldShaun_text = tibble(text = Reduce(c, commentsOldShaun_text)) %>%
+  mutate(text = stri_trans_general(tolower(text), "Latin-ASCII"))
+
+leftOldComments = rbind(commentsOldContra_text,commentsOldShaun_text)
+
+tidy_left_old_comments <- leftOldComments %>% #break down sentences into words
+  tidytext::unnest_tokens(word, text) %>%
+  anti_join(custom_stop_words, by = "word")
+
+tidyleftOldComments <- tidy_left_old_comments  %>%
+  inner_join(get_sentiments("nrc"), by = "word") %>% 
+  count(word, sentiment, sort = TRUE) %>% 
+  group_by(sentiment) %>%
+  top_n(10) %>%
+  ungroup() %>%
+  mutate(pos_neg = ifelse(sentiment %in% c("positive", "anticipation", "joy", "trust", "surprise"), 
+                          "Positive", "Negative")) 
+  g2<- ggplot(tidyleftOldComments, aes(reorder(sentiment, n), n)) +
+  geom_col(aes(fill = pos_neg), show.legend = FALSE) +
+  scale_fill_manual(values = c("red2", "green3")) +
+  xlab("Sentiment") +
+  ylab("Total Number of Words") + 
+  labs(title = "Total Number of Words by Sentiment or Emotion for Left Leaning YouTubers Before Trump Election") +
+  coord_flip()
+g2
+
+tidyrightCommentsNew <- tidyrightComments2 %>%
+  group_by(sentiment) %>%
+  summarize(num = sum(n)) %>%
+  mutate(type = "Right",
+         percent = num/sum(num)) 
+
+tidyleftCommentsNew <- tidyleftComments2 %>%
+  group_by(sentiment) %>%
+  summarize(num = sum(n)) %>%
+  mutate(type = "Left",
+         percent = num/sum(num))
+
+tidyrightCommentsOld <- tidyrightOldComments %>%
+  group_by(sentiment) %>%
+  summarize(num = sum(n)) %>%
+  mutate(type = "Right",
+         percent = num/sum(num))
+
+tidyleftCommentsOld <- tidyleftOldComments %>%
+  group_by(sentiment) %>%
+  summarize(num = sum(n)) %>%
+  mutate(type = "Left",
+         percent = num/sum(num))
+
+tidyrightCommentsNew$percent = tidyrightCommentsNew$percent - tidyrightCommentsOld$percent
+tidyleftCommentsNew$percent = tidyleftCommentsNew$percent - tidyleftCommentsOld$percent
+
+masterData <- rbind(tidyleftCommentsNew,tidyrightCommentsNew)
+
+masterData$sentiment = factor(masterData$sentiment, levels=c("negative", "anger","disgust","fear","sadness","positive","joy","trust","anticipation","surprise"))
+
+masterPlot<- ggplot(masterData, aes(x= sentiment, y=percent, fill = type))+
+  geom_bar(stat = "identity",width = 0.5, position = position_dodge()) +
+  scale_fill_manual(values = c("blue", "red")) +
+  labs(title = "Percent Change in Share of Sentiment From Before Trump Election to Now") +
+  xlab("Sentiment") +
+  ylab("Percent Change") +
+  theme(legend.title = element_blank()) +
+  theme(axis.text.x = element_text(colour="grey20",size=17,angle=0,hjust=.5,vjust=.5,face="plain"),
+        axis.text.y = element_text(colour="grey20",size=17,angle=0,hjust=1,vjust=0,face="plain"),  
+        axis.title.x = element_text(colour="grey20",size=20,angle=0,hjust=.5,vjust=0,face="bold"),
+        axis.title.y = element_text(colour="grey20",size=20,angle=90,hjust=.5,vjust=.5,face="bold"),
+        legend.text=element_text(size=17),
+        plot.title = element_text(size = 27, face = "bold"))
+
+masterPlot
