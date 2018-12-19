@@ -219,3 +219,17 @@ commentsShapiro_text = tibble(text = Reduce(c, commentsShapiro_text)) %>%
 # Combining Left and Right channel comments
 leftComments = rbind(commentsContra_text,commentsShaun_text)
 rightComments = rbind(commentsCrowder_text,commentsShapiro_text)
+
+# Preparing lexicon for analysis
+# Removing  "white" from lexicon due to inappropriate usage of associated sentiment
+
+custom_stop_words <- bind_rows(data_frame(word = c("white"), lexicon = c("custom")),stop_words) 
+
+# Breaking down sentences from comments into tokens (words)
+tidy_left_comments <- leftComments %>% 
+  tidytext::unnest_tokens(word, text) %>%
+  anti_join(custom_stop_words, by = "word")
+
+tidy_right_comments <- rightComments %>% 
+  tidytext::unnest_tokens(word, text) %>%
+  anti_join(custom_stop_words, by = "word")
