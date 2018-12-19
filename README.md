@@ -1,4 +1,4 @@
-# Youtube-Sentiments
+# YouTube Communities: An Analysis of the Political Left and Right
 
 ## By Adil Chhabra & David Green
 
