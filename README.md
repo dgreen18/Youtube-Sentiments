@@ -29,7 +29,7 @@ The second file is a Shiny App, app.R.
 The third file here is the Report.Rmd file. 
 - This is the R Markdown file used to produce the technical report.
 - In this file, CSV's that contain comment text have been used for two reasons:
-a) Fetching comments requires substantial computational time (upto hours)
-b) As the data is live updating, figures and plots you produce using the comment data from today would be different from the ones we produced and analyzed last week.
+-- Fetching comments requires substantial computational time (upto hours)
+-- As the data is live updating, figures and plots you produce using the comment data from today would be different from the ones we produced and analyzed last week.
 Thus, CSV's containing comment text utilized by us allow for easy reproducability. 
 - The CSV's used in this file are LeftComments.csv, LeftOldComments.csv, RightComments.csv and RightOldComments.csv.
