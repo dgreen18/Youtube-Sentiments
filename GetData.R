@@ -352,3 +352,28 @@ rightTop7_5GramsPlot <- ggplot(rightTop7_5Grams, aes(five_gram, n)) +
   theme_minimal()
 rightTop7_5GramsPlot
 
+# Comparing with Pre-Trump
+
+# Establishing function to get videos posted by chosen channels within 3 months before Trumps election
+get_old_videos <- function(channelID){
+  videos = yt_search(term="", type="video", channel_id = channelID)
+  videos = videos %>%
+    mutate(date = as.Date(publishedAt)) %>%
+    filter(date > "2016-08-01", date  < "2016-11-01") %>%
+    arrange(date)
+  return(videos)
+}
+
+crowderOldVideos <- get_old_videos(crowderID)
+crowderOldVideoStats <- get_video_stats(crowderOldVideos)
+
+shapiroOldVideos <- get_old_videos(shapiroID)
+# No videos
+# Ben Shapiro's channel did not exist at this time
+
+contraOldVideos <- get_old_videos(contraID)
+contraOldVideoStats <- get_video_stats(contraOldVideos)
+
+shaunOldVideos <- get_old_videos(shaunID)
+shaunOldVideoStats <- get_video_stats(shaunOldVideos)
+
