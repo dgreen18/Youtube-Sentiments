@@ -552,7 +552,7 @@ rightCommentsOld <- oldSentimentRight %>%
   mutate(type = "Right",
          percent = num/sum(num))
 
-# Change in share of sentiment
+# Percentage change in share of sentiment
 rightCommentsNew$percent = rightCommentsNew$percent - rightCommentsOld$percent
 leftCommentsNew$percent = leftCommentsNew$percent - leftCommentsOld$percent
 
@@ -580,4 +580,9 @@ masterPlot<- ggplot(masterData, aes(x= sentiment, y=percent*100, fill = type))+
 
 masterPlot
 
+# In the code, there is a lot that can be refined further. We were limited by time, else we would have
+# further minimized hand coded data frames and created few additional functions. 
+# In my head, I already know exactly how such and such can be implemented. 
+# For the most part however, the code can be applied to analyzing sentiment for a chosen YouTube channel,
+# between multiple YouTube channels, and between 2 kinds of YouTube channels with minor tweaks. 
 
