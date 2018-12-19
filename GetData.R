@@ -233,3 +233,43 @@ tidy_left_comments <- leftComments %>%
 tidy_right_comments <- rightComments %>% 
   tidytext::unnest_tokens(word, text) %>%
   anti_join(custom_stop_words, by = "word")
+
+# Plots faceting most used words by sentiment
+facetLeft <- tidy_left_comments  %>%
+  inner_join(get_sentiments("nrc"), by = "word") %>% #assign sentiment based on NRC lexicon
+  count(word, sentiment, sort = TRUE) %>% 
+  group_by(sentiment) %>%
+  top_n(10) %>%
+  ungroup() %>%
+  mutate(word = reorder(word, n))
+
+facetLeftPlot <- ggplot(facetLeft, aes(word, n, fill = sentiment)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~sentiment, scales = "free_y") +
+  xlab(NULL) +
+  ylab(NULL) +
+  labs(title = "Most Common Words faceted by Emotion and Sentiment for Left Leaning YouTubers") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  coord_flip() +
+  theme_minimal()
+facetLeftPlot
+
+facetRight <- tidy_right_comments  %>%
+  inner_join(get_sentiments("nrc"), by = "word") %>% 
+  count(word, sentiment, sort = TRUE) %>% 
+  group_by(sentiment) %>%
+  top_n(10) %>%
+  ungroup() %>%
+  mutate(word = reorder(word, n))
+
+facetRightPlot <- ggplot(facetRight, aes(word, n, fill = sentiment)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~sentiment, scales = "free_y") +
+  xlab(NULL) +
+  ylab(NULL) +
+  labs(title = "Most Common Words faceted by Emotion and Sentiment for Right Leaning YouTubers") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  coord_flip() +
+  theme_minimal()
+facetRightPlot
+
